@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1 class="page-title">Inventory Dashboard</h1>
+        <p class="summary">
+          <span class="summary-badge critical">{{ counts.critical }} critical</span>
+          <span class="summary-badge low">{{ counts.low }} low</span>
+          <span class="summary-badge healthy">{{ counts.healthy }} healthy</span>
+        </p>
+      </div>
+      <div class="header-right">
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="critical" onclick="toggleFilter(this)">Critical</button>
+          <button class="filter-btn active" data-filter="low" onclick="toggleFilter(this)">Low</button>
+          <button class="filter-btn active" data-filter="healthy" onclick="toggleFilter(this)">Healthy</button>
+        </div>
+        <a href="/reorder" class="reorder-btn">
+          Reorder List
+          <span class="reorder-count-badge" id="reorder-badge"
+            {% if reorder_count == 0 %}style="display:none"{% endif %}>
+            {{ reorder_count }}
+          </span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Stock</th>
+            <th>Stock %</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+            {% set pct = ((p.current_stock / p.max_stock) * 100) | round | int if p.max_stock else 0 %}
+            {% if pct < 15 %}
+              {% set status = "critical" %}
+            {% elif pct < 30 %}
+              {% set status = "low" %}
+            {% else %}
+              {% set status = "healthy" %}
+            {% endif %}
+          <tr class="row-{{ status }}" data-status="{{ status }}">
+            <td class="mono">{{ p.sku }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.category }}</td>
+            <td class="mono">{{ p.current_stock }} / {{ p.max_stock }}</td>
+            <td>{{ pct }}%</td>
+            <td><span class="pill pill-{{ status }}">{{ status | capitalize }}</span></td>
+            <td>
+              {% if p.id in reorder_ids %}
+              <button class="action-btn action-btn--remove"
+                      data-product-id="{{ p.id }}"
+                      data-state="added"
+                      onclick="toggleReorder(this)">Remove from Reorder List</button>
+              {% else %}
+              <button class="action-btn"
+                      data-product-id="{{ p.id }}"
+                      data-state="idle"
+                      onclick="toggleReorder(this)">Add to Reorder List</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    function toggleFilter(btn) {
+      const filter = btn.dataset.filter;
+      btn.classList.toggle('active');
+      const isActive = btn.classList.contains('active');
+      document.querySelectorAll(`tr[data-status="${filter}"]`).forEach(row => {
+        row.style.display = isActive ? '' : 'none';
+      });
+    }
+
+    function updateBadge(count) {
+      const badge = document.getElementById('reorder-badge');
+      badge.textContent = count;
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+
+    async function toggleReorder(btn) {
+      const productId = btn.dataset.productId;
+      const isAdded = btn.dataset.state === 'added';
+
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(
+          isAdded ? `/reorder/remove/${productId}` : `/reorder/add/${productId}`,
+          { method: isAdded ? 'DELETE' : 'POST' }
+        );
+        if (!res.ok) throw new Error('Request failed');
+        const data = await res.json();
+
+        if (isAdded) {
+          btn.textContent = 'Add to Reorder List';
+          btn.classList.remove('action-btn--remove');
+          btn.dataset.state = 'idle';
+        } else {
+          btn.textContent = 'Remove from Reorder List';
+          btn.classList.add('action-btn--remove');
+          btn.dataset.state = 'added';
+        }
+
+        updateBadge(data.count);
+      } catch (e) {
+        btn.textContent = 'Error — try again';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+Fix these four issues from the code review:
+1. Fix the quantity input in reorder.html — use value="{{ item.quantity }}" instead of placeholder so the field is actually pre-filled, not just visually hinted.
+2. Wrap the PDF generation in app.py with try/except — catch exceptions from doc.build(), return a clean JSON error response with status 500.
+3. Wrap all db.session.commit() calls with try/except and db.session.rollback() on failure. Return a clean error response.
+4. Create a requirements.txt with all project dependencies and their versions.
+Don't change any other functionality.

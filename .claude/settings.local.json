@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python seed_data.py)",
+      "Bash(python3 seed_data.py)",
+      "Bash(where.exe python *)",
+      "Bash(where.exe python3 *)",
+      "Bash(where.exe py *)",
+      "Bash(\"/c/Users/alber/AppData/Local/Programs/Python/Python313/python.exe\" seed_data.py)",
+      "Bash(/c/Users/alber/AppData/Local/Programs/Python/Python313/python.exe -c ' *)",
+      "Bash(pip install *)",
+      "Bash(python *)",
+      "Bash(grep -E \"\\\\.\\(py|html|css|txt|json|md|yml|yaml|toml|env|cfg|ini\\)$\")",
+      "Bash(pip show *)"
+    ]
+  }
+}

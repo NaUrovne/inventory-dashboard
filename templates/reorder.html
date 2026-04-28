@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reorder List</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1 class="page-title">Reorder List</h1>
+        <p class="reorder-count" id="item-count">
+          {% set n = items | length %}
+          {{ n }} item{{ 's' if n != 1 }} in your reorder list
+        </p>
+      </div>
+      <div class="header-right">
+        <a href="/reorder/export-pdf"
+           id="export-pdf-btn"
+           class="reorder-btn"
+           {% if not items %}style="pointer-events:none;opacity:0.4;cursor:not-allowed"{% endif %}>
+          Export to PDF
+        </a>
+        <a href="/" class="back-btn">← Back to Dashboard</a>
+      </div>
+    </header>
+
+    <!-- Empty state (hidden when table has rows) -->
+    <div class="empty-state" id="empty-state" {% if items %}style="display:none"{% endif %}>
+      <p class="empty-title">Your reorder list is empty.</p>
+      <p class="empty-subtitle">Add items from the dashboard.</p>
+      <a href="/" class="reorder-btn">Go to Dashboard</a>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper" id="table-wrapper" {% if not items %}style="display:none"{% endif %}>
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Name</th>
+            <th>Stock</th>
+            <th>Stock %</th>
+            <th>Reorder Qty</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            {% set p = item.product %}
+            {% set pct = ((p.current_stock / p.max_stock) * 100) | round | int if p.max_stock else 0 %}
+            {% if pct < 15 %}
+              {% set status = "critical" %}
+            {% elif pct < 30 %}
+              {% set status = "low" %}
+            {% else %}
+              {% set status = "healthy" %}
+            {% endif %}
+          <tr class="row-{{ status }}" id="row-{{ item.product_id }}">
+            <td class="mono">{{ p.sku }}</td>
+            <td>{{ p.name }}</td>
+            <td class="mono">{{ p.current_stock }} / {{ p.max_stock }}</td>
+            <td><span class="pill pill-{{ status }}">{{ pct }}%</span></td>
+            <td>
+              {% set gap = [p.max_stock - p.current_stock, 0] | max %}
+              <div class="qty-cell">
+                <input class="qty-input"
+                       type="number"
+                       min="0"
+                       max="{{ gap }}"
+                       value="{{ item.quantity }}"
+                       data-product-id="{{ item.product_id }}"
+                       data-original="{{ item.quantity }}"
+                       data-max="{{ gap }}"
+                       onblur="saveQuantity(this)" />
+                <button class="fill-btn"
+                        data-fill="{{ gap }}"
+                        onclick="fillToMax(this)">Fill to Max</button>
+              </div>
+            </td>
+            <td><button class="remove-btn"
+                        data-product-id="{{ item.product_id }}"
+                        onclick="removeItem(this)">Remove</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    function fillToMax(btn) {
+      const input = btn.closest('.qty-cell').querySelector('.qty-input');
+      input.value = btn.dataset.fill;
+      input.focus();
+      // Trigger save immediately since user explicitly chose Fill to Max
+      saveQuantity(input);
+    }
+
+    async function saveQuantity(input) {
+      const productId = input.dataset.productId;
+      const quantity = parseInt(input.value, 10);
+
+      const max = parseInt(input.dataset.max, 10);
+      if (!quantity || quantity < 1) {
+        input.value = input.dataset.original;
+        return;
+      }
+      if (quantity > max) {
+        input.value = max;
+        return saveQuantity(input);
+      }
+      if (quantity === parseInt(input.dataset.original, 10)) return;
+
+      input.disabled = true;
+      try {
+        const res = await fetch(`/reorder/update/${productId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity }),
+        });
+        if (!res.ok) throw new Error('Request failed');
+        input.dataset.original = quantity;
+      } catch (e) {
+        input.value = input.dataset.original;
+      } finally {
+        input.disabled = false;
+      }
+    }
+
+    async function removeItem(btn) {
+      const productId = btn.dataset.productId;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`/reorder/remove/${productId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Request failed');
+
+        // Remove the row
+        document.getElementById(`row-${productId}`).remove();
+
+        // Update count text
+        const remaining = document.querySelectorAll('#table-wrapper tbody tr').length;
+        const countEl = document.getElementById('item-count');
+        countEl.textContent = `${remaining} item${remaining !== 1 ? 's' : ''} in your reorder list`;
+
+        // Show empty state if no rows left
+        if (remaining === 0) {
+          document.getElementById('table-wrapper').style.display = 'none';
+          document.getElementById('empty-state').style.display = '';
+          const exportBtn = document.getElementById('export-pdf-btn');
+          exportBtn.style.pointerEvents = 'none';
+          exportBtn.style.opacity = '0.4';
+          exportBtn.style.cursor = 'not-allowed';
+        }
+      } catch (e) {
+        btn.textContent = 'Error';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
