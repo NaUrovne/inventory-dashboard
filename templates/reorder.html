@@ -118,7 +118,7 @@
       }
       if (quantity > max) {
         input.value = max;
-        return saveQuantity(input);
+        return;
       }
       if (quantity === parseInt(input.dataset.original, 10)) return;
 
@@ -130,7 +130,9 @@
           body: JSON.stringify({ quantity }),
         });
         if (!res.ok) throw new Error('Request failed');
-        input.dataset.original = quantity;
+        const data = await res.json();
+        input.value = data.quantity;
+        input.dataset.original = data.quantity;
       } catch (e) {
         input.value = input.dataset.original;
       } finally {

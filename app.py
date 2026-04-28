@@ -77,7 +77,10 @@ def create_app(db_path: str = "inventory.db") -> Flask:
         existing = ReorderListItem.query.filter_by(product_id=product_id).first()
         if existing:
             return jsonify({"status": "already_added", "count": ReorderListItem.query.count()})
-        item = ReorderListItem(product_id=product_id, quantity=max(0, product.max_stock - product.current_stock))
+        gap = product.max_stock - product.current_stock
+        if gap <= 0:
+            return jsonify({"status": "error", "message": "Product is fully stocked"}), 400
+        item = ReorderListItem(product_id=product_id, quantity=gap)
         db.session.add(item)
         try:
             db.session.commit()
@@ -96,7 +99,10 @@ def create_app(db_path: str = "inventory.db") -> Flask:
         quantity = data.get("quantity")
         if not isinstance(quantity, int) or quantity < 1:
             abort(400)
-        item.quantity = min(quantity, item.product.max_stock - item.product.current_stock)
+        gap = item.product.max_stock - item.product.current_stock
+        if gap <= 0:
+            return jsonify({"status": "error", "message": "Product is fully stocked"}), 400
+        item.quantity = min(quantity, gap)
         try:
             db.session.commit()
         except Exception:
