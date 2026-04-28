@@ -49,6 +49,7 @@
             <th>Stock</th>
             <th>Stock %</th>
             <th>Reorder Qty</th>
+            <th>Added</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -85,6 +86,7 @@
                         onclick="fillToMax(this)">Fill to Max</button>
               </div>
             </td>
+            <td class="mono">{{ item.added_at.day }} {{ item.added_at.strftime('%b %Y') }}</td>
             <td><button class="remove-btn"
                         data-product-id="{{ item.product_id }}"
                         onclick="removeItem(this)">Remove</button></td>
