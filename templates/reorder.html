@@ -49,6 +49,7 @@
             <th>Stock</th>
             <th>Stock %</th>
             <th>Reorder Qty</th>
+            <th>Added</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -85,6 +86,7 @@
                         onclick="fillToMax(this)">Fill to Max</button>
               </div>
             </td>
+            <td class="mono">{{ item.added_at.day }} {{ item.added_at.strftime('%b %Y') }}</td>
             <td><button class="remove-btn"
                         data-product-id="{{ item.product_id }}"
                         onclick="removeItem(this)">Remove</button></td>
@@ -116,7 +118,7 @@
       }
       if (quantity > max) {
         input.value = max;
-        return saveQuantity(input);
+        return;
       }
       if (quantity === parseInt(input.dataset.original, 10)) return;
 
@@ -128,7 +130,9 @@
           body: JSON.stringify({ quantity }),
         });
         if (!res.ok) throw new Error('Request failed');
-        input.dataset.original = quantity;
+        const data = await res.json();
+        input.value = data.quantity;
+        input.dataset.original = data.quantity;
       } catch (e) {
         input.value = input.dataset.original;
       } finally {
