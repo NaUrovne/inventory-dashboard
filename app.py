@@ -7,6 +7,7 @@ import os
 from datetime import date
 from flask import Flask, render_template, jsonify, abort, request, send_file
 from models import db, Product, ReorderListItem
+from routes.api import api_bp
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -36,6 +37,8 @@ def create_app(db_path: str = "inventory.db") -> Flask:
 
     with app.app_context():
         db.create_all()
+
+    app.register_blueprint(api_bp)
 
     @app.route("/")
     def dashboard() -> str:

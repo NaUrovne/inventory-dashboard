@@ -11,7 +11,8 @@
       "Bash(pip install *)",
       "Bash(python *)",
       "Bash(grep -E \"\\\\.\\(py|html|css|txt|json|md|yml|yaml|toml|env|cfg|ini\\)$\")",
-      "Bash(pip show *)"
+      "Bash(pip show *)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }
